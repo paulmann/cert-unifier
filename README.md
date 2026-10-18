@@ -169,7 +169,7 @@ To prevent race conditions where a web server might read a partially written cer
 ## 10. License & Acknowledgments
 
 ### 10.1 License
-Distributed under the **MIT License**. See `LICENSE` for details.
+Distributed under the **PolyForm Noncommercial License 1.0.0**. See `LICENSE` for details.
 
 ### 10.2 Copyright
 Copyright (c) 2026 **Mikhail Deynekin**.
