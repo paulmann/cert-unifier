@@ -5,6 +5,9 @@
 [![Bash](https://img.shields.io/badge/bash-4.0%2B-red.svg)](https://www.gnu.org/software/bash/)
 [![OpenSSL](https://img.shields.io/badge/openssl-1.1.1%2B-orange.svg)](https://www.openssl.org/)
 
+<!-- md-i18n:switcher -->
+**Read this in:** English · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
+
 - [1. Overview](#1-overview)
 - [2. Key Features](#2-key-features)
 - [3. System Requirements](#3-system-requirements)
