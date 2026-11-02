@@ -140,7 +140,9 @@ cleanup() {
     # expansion as an unbound variable.
     if (( ${#TMP_FILES[@]} > 0 )); then
         for f in "${TMP_FILES[@]}"; do
-            [[ -n "$f" && -e "$f" ]] && rm -f "$f" 2>/dev/null || true
+            if [[ -n "$f" && -e "$f" ]]; then
+                rm -f "$f" 2>/dev/null || true
+            fi
         done
     fi
 }
