@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If Cert Unifier contributes to published work, cite it using this metadata."
+type: software
+title: "Cert Unifier"
+abstract: >-
+  A self-contained Bash tool that unifies Let's Encrypt, Certbot and legacy
+  certificate layouts into audited PEM bundles, verifying that each private key
+  matches its leaf certificate before anything is written.
+version: 3.1.1
+date-released: "2026-11-02"
+license: MIT
+repository-code: "https://github.com/paulmann/cert-unifier"
+url: "https://github.com/paulmann/cert-unifier"
+keywords:
+  - certificates
+  - letsencrypt
+  - certbot
+  - pem
+  - pkcs12
+  - bash
+authors:
+  - family-names: Deynekin
+    given-names: Mikhail
+    website: "https://github.com/paulmann"

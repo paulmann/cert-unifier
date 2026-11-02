@@ -1,0 +1,97 @@
+name: Bug report
+description: Report a reproducible defect in cert-unifier.sh
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. This tool handles private keys: **never paste a
+        real key, passphrase, certificate or any other secret**. A synthetic
+        fixture or a redacted line is enough.
+
+        Security vulnerabilities do not belong here — use
+        [SECURITY.md](https://github.com/paulmann/cert-unifier/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Cert Unifier version
+      description: Output of `./cert-unifier.sh --version`.
+      placeholder: cert-unifier.sh 3.1.1
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Distribution and platform
+      description: OS and version, or "Git Bash on Windows 11".
+      placeholder: Debian 12, Ubuntu 24.04, macOS 15, Git Bash on Windows 11
+    validations:
+      required: true
+  - type: input
+    id: bash-version
+    attributes:
+      label: Bash version
+      description: Output of `bash --version | head -1`.
+      placeholder: GNU bash, version 5.2.15(1)-release
+    validations:
+      required: true
+  - type: input
+    id: openssl-version
+    attributes:
+      label: OpenSSL version
+      description: Output of `openssl version`.
+      placeholder: OpenSSL 3.0.13 30 Jan 2024
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      description: The full command line, including flags and the scanned path. Redact host names if needed.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What you expected the tool to do, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Exit code (`echo $?`) and the full stderr/stdout, redacted.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: |
+        The smallest sequence that shows the defect, for example the directory
+        layout and synthetic certificates generated with OpenSSL.
+      render: shell
+  - type: dropdown
+    id: layout
+    attributes:
+      label: Which layout
+      options:
+        - Certbot live/ directory
+        - Legacy _leN files
+        - Both
+        - Not applicable
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: This report contains no private keys, passphrases or personal data.
+          required: true
+        - label: I searched existing issues and the wiki before opening this one.
+          required: true

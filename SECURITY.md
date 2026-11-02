@@ -34,7 +34,17 @@ CRL or OCSP status; it verifies that key and leaf certificate match.
 
 Please do **not** open a public GitHub issue for security problems.
 
-Contact: mid1977@gmail.com
+The primary channel is GitHub's private vulnerability reporting for this
+repository:
+[Report a vulnerability privately](https://github.com/paulmann/cert-unifier/security/advisories/new).
+It keeps the report, the discussion and the fix private until an advisory is
+published.
+
+If private reporting is unavailable, write to
+<paulmann@users.noreply.github.com> and say in the subject that the message is a
+security report. Do not include a private key, a passphrase or customer data in
+the first message; describe the issue and, if a fixture is essential, replace
+real material with synthetic certificates.
 
 Include:
 

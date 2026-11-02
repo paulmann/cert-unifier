@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose a change or a new capability
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem, not only the implementation. The project is one
+        self-contained Bash script with no runtime dependencies; a proposal that
+        adds a required dependency or a network call is unlikely to be accepted.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this solve, and in which layout or workflow does it appear?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: The behaviour you would like, including a flag or environment variable name if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Current workarounds, or why another tool does not cover this.
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and security impact
+      description: |
+        Breaking changes to existing flags, output files or exit codes; new
+        dependencies; how private keys and passphrases would be handled.
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: This proposal does not require network access or a new hard dependency, or the reason is explained above.
+          required: false
+        - label: I understand this is a single-file Bash tool and changes must keep the test suite and shellcheck clean.
+          required: true

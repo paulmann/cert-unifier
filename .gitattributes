@@ -1,0 +1,34 @@
+# Line endings: repository text is UTF-8 without BOM and LF; Windows-only
+# scripts keep CRLF. Binary media is never line-ending converted.
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.bash text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.cff text eol=lf
+*.txt text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+LICENSE text eol=lf
+
+# Windows-only scripts keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.reg text eol=crlf
+
+# Images and archives are binary; a PNG must never be normalised.
+assets/*.png binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tgz binary
