@@ -1,185 +1,220 @@
-# Cert Unifier Security Module
+# Cert Unifier
 
-[![Version](https://img.shields.io/badge/version-2.9.0-blue.svg)](https://github.com/paulmann/cert-unifier)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-blue.svg)](https://www.linux.org/)
-[![Bash](https://img.shields.io/badge/bash-4.0%2B-red.svg)](https://www.gnu.org/software/bash/)
-[![OpenSSL](https://img.shields.io/badge/openssl-1.1.1%2B-orange.svg)](https://www.openssl.org/)
+**Version 3.1.1** — audited PEM and PFX unification for Let's Encrypt, Certbot and legacy layouts.
 
-<!-- md-i18n:switcher -->
-**Read this in:** English · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
+[English](README.md) · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
 
-- [1. Overview](#1-overview)
-- [2. Key Features](#2-key-features)
-- [3. System Requirements](#3-system-requirements)
-- [4. Quick Start Guide](#4-quick-start-guide)
-- [5. Installation & Setup](#5-installation--setup)
-- [6. Architecture & Components](#6-architecture--components)
-- [7. Usage Examples](#7-usage-examples)
-- [8. Parameters Reference](#8-parameters-reference)
-- [9. Technical Considerations](#9-technical-considerations)
-- [10. License & Acknowledgments](#10-license--acknowledgments)
+[![CI](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml/badge.svg)](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Bash 4.0+](https://img.shields.io/badge/bash-4.0%2B-4EAA25)](https://www.gnu.org/software/bash/)
+[![OpenSSL 1.1.1+ / 3.x](https://img.shields.io/badge/openssl-1.1.1%2B%20%7C%203.x-721412)](https://www.openssl.org/)
 
-***
+## Contents
 
-## 1. Overview
+- [What it does](#what-it-does)
+- [Why a unifier needs to verify](#why-a-unifier-needs-to-verify)
+- [Requirements](#requirements)
+- [Install](#install)
+- [Usage](#usage)
+- [Options](#options)
+- [Layouts](#layouts)
+- [JSON summary](#json-summary)
+- [Exit codes](#exit-codes)
+- [Safety](#safety)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+- [Changelog](#changelog)
 
-**Cert Unifier** (v2.9.0) is a high-performance Bash module designed to automate the assembly, validation, and unification of SSL/TLS certificates and private keys into standardized PEM and PFX bundles. Engineered for DevOps workflows and automated web server deployments (Nginx, Apache, HAProxy), it ensures cryptographic consistency and atomic file operations across diverse certificate structures.
+## What it does
 
-### Primary Purpose
-The module streamlines certificate lifecycle management by:
-- Merging leaf certificates and intermediate chains with matching private keys
-- Validating RSA/EC modulus matches to prevent deployment of mismatched assets
-- Automating PKCS#12 (PFX) generation for Windows/IIS environments
-- Enforcing secure file permissions (0600) on sensitive cryptographic material
-- Supporting both modern Certbot layouts and legacy directory structures
+Cert Unifier scans a directory tree of Let's Encrypt material, checks that each
+private key really belongs to its leaf certificate, and writes one audited
+bundle per domain: the private key followed by the full chain.
 
-***
+- **Public-key matching** for RSA and EC keys (`openssl x509 -pubkey` against
+  `openssl pkey -pubout`), not a modulus hash that only works for RSA.
+- **Refuses to write what it cannot verify**: a mismatched key, a
+  passphrase-protected key, an unreadable key or a missing key stops that entry
+  with an error instead of producing a broken bundle.
+- **Atomic writes**: content is assembled in the target directory, forced to
+  mode 0600, then renamed over the destination.
+- **Idempotent**: a byte-identical bundle is left untouched (mtime preserved),
+  and a pre-existing 0644 bundle has its mode corrected.
+- **Optional PKCS#12** export for IIS/Windows, and optional expiry warnings.
+- **Machine-readable** `--json` summary for automation.
+- **No network access**: it never requests, renews, revokes or installs
+  certificates, and never reloads a service.
 
-## 2. Key Features
+## Why a unifier needs to verify
 
-### 2.1 Unified PEM Assembly
-- **Atomic Writes**: Utilizes temporary buffers to ensure file integrity during assembly
-- **Newline Normalization**: Guaranteed proper separation between key and chain components
-- **Auto-Discovery**: Intelligent scanning of legacy and modern Certbot layouts
+A bundle is only useful if the key inside it matches the certificate. The
+common failure modes are silent: Certbot rotates the private key on renewal,
+legacy layouts keep `_le1`, `_le2`, `_le10` side by side, and operators copy the
+wrong key. A web server that starts with a mismatched key fails the handshake
+later, at the worst possible moment. Cert Unifier treats key/certificate
+matching as a precondition, not a warning.
 
-### 2.2 Advanced Cryptographic Validation
-- **Modulus Verification**: Deep validation of private keys against certificates before unification
-- **Key Integrity**: Multi-engine support (RSA/EC) for modulus extraction and comparison
-- **PFX Matching**: v2.9.0 introduces auto-discovery of matching key/cert pairs for PKCS#12 creation
+## Requirements
 
-### 2.3 Comprehensive Layout Support
-- **Certbot Native**: Native processing of `/etc/letsencrypt/live` structures
-- **Legacy Support**: Support for `leX.crt` and `leX.key` naming conventions
-- **TLD Filtering**: Customizable domain processing based on Top-Level Domains (default: .ru, .com)
+| Requirement | Why |
+|-------------|-----|
+| Bash 4.0 or later | arrays, `shopt`, process substitution |
+| `openssl` 1.1.1 or 3.x | public-key comparison, PEM validation, PKCS#12 export |
+| `flock` (optional) | keeps two runs from touching the same tree |
+| Read access to keys and certificates | the private key is read into the bundle |
+| Write access to the output directory | bundles are written next to the sources |
 
-### 2.4 Enterprise Deployment Features
-- **Dry-Run Mode**: Full validation of inputs and output paths without filesystem modification
-- **Secure Permissions**: Automated application of 0600 permissions to private keys and PFX files
-- **Logging Architecture**: Multi-level logging (DEBUG, INFO, WARN, ERROR) with timestamps
+Linux, macOS and WSL are supported. macOS ships Bash 3.2; install a newer
+Bash (`brew install bash`) or run the script with `bash` from Homebrew.
 
-***
+## Install
 
-## 3. System Requirements
-
-### 3.1 Minimum Requirements
-- **OS**: Linux (any modern distribution), macOS, or WSL
-- **Shell**: Bash 4.0 or later
-- **Utilities**: `openssl`, `grep`, `awk`, `date`
-- **Permissions**: Read access to source certificates; write access to output directories
-
-### 3.2 Recommended Configuration
-- **OpenSSL**: 1.1.1+ (supports modern ECC and friendly name attributes)
-- **Filesystem**: Standard Linux/Unix permissions model supported
-- **Dependencies**: Full `openssl` toolkit for PFX generation and deep key validation
-
-***
-
-## 4. Quick Start Guide
-
-### 4.1 Deployment in 3 Steps
-
-**Step 1: Download the Script**
 ```bash
 wget https://raw.githubusercontent.com/paulmann/cert-unifier/main/cert-unifier.sh
 chmod +x cert-unifier.sh
+./cert-unifier.sh --version
 ```
 
-**Step 2: Basic Unification**
-```bash
-./cert-unifier.sh /var/www/httpd-cert
-```
-
-**Step 3: Advanced PFX Generation**
-```bash
-./cert-unifier.sh --pfx --pfx-password "your_password" /etc/letsencrypt/live
-```
-
-***
-
-## 5. Installation & Setup
-
-### 5.1 Manual Installation
-1. Move the script to a system PATH directory (e.g., `/usr/local/bin`)
-2. Ensure dependencies are satisfied: `apt install openssl grep awk`
-3. Configure environment variables if needed:
-   - `ALLOWEDTLDS="ru com org"`
-   - `LOGLEVEL="INFO"`
-
-### 5.2 Automated CI/CD Setup
-In corporate environments, integrate via GitLab CI or GitHub Actions:
-```yaml
-- name: Unify Certificates
-  run: |
-    export ALLOWEDTLDS="com net"
-    ./cert-unifier.sh --no-key-validation --output-dir ./dist /certs/source
-```
-
-***
-
-## 6. Architecture & Components
-
-### 6.1 Logic Flow
-1. **Environment Check**: Validates OpenSSL version and dependencies
-2. **Directory Scanning**: Iterates through target root, identifying layouts
-3. **Validation**: Extracts moduli; compares key-cert pairs
-4. **Assembly**: Concat(key, chain) -> atomic write to .pem
-5. **PFX Generation** (Optional): Converts PEM bundle to PKCS#12
-
-***
-
-## 7. Usage Examples
+System-wide:
 
 ```bash
-# Dry run with verbose debugging
+sudo install -m 755 cert-unifier.sh /usr/local/bin/cert-unifier
+```
+
+## Usage
+
+```bash
+# 1. inspect the tree without writing anything
 ./cert-unifier.sh --dry-run --verbose /etc/letsencrypt/live
 
-# Process all domains (no TLD filtering)
-./cert-unifier.sh --no-tld-filter /var/www/certs
+# 2. run it on one domain directory, then on the whole tree
+./cert-unifier.sh /etc/letsencrypt/live/example.com
+./cert-unifier.sh /etc/letsencrypt/live
 
-# Generate PFX files and skip mismatches
-./cert-unifier.sh --pfx --skip-pfx-on-mismatch /opt/certs
+# 3. PEM plus PKCS#12 (the password is read from the environment)
+PFX_PASSWORD='...' ./cert-unifier.sh --pfx /var/www/certs
 
-# Override output directory
-./cert-unifier.sh -o /tmp/unified_certs /var/www/certs
+# 4. legacy tree with more than one generation per domain
+./cert-unifier.sh --no-tld-filter --recursive /opt/certs
 ```
 
-***
+Each processed entry writes `<domain>.pem` (private key, then leaf, then
+intermediates) next to its source files, or into `--output-dir` when given.
 
-## 8. Parameters Reference
+## Options
 
 | Option | Description | Default |
-| :--- | :--- | :--- |
-| `-d, --dry-run` | Validate without writing files | `false` |
-| `-v, --verbose` | Enable DEBUG level logging | `false` |
-| `-t, --tlds` | List of allowed TLDs | `ru com` |
-| `-o, --output-dir` | Override output path | Input dir |
-| `--no-tld-filter` | Process all domains | `false` |
-| `--pfx` | Generate PKCS12 files | `false` |
-| `--pfx-password`| Set PFX password | Empty |
+|--------|-------------|---------|
+| `-h, --help` | Show help and exit | |
+| `-V, --version` | Show version and exit | |
+| `-d, --dry-run` | Validate and report, write nothing | off |
+| `-v, --verbose` | DEBUG logging | off |
+| `-t, --tlds LIST` | Allowed TLDs, comma or space separated | `ru com` |
+| `-o, --output-dir PATH` | Write bundles here instead of next to sources | same as source |
+| `--no-tld-filter` | Process every domain | off |
+| `--no-key-validation` | Bundle even when the key cannot be verified | off |
+| `--pfx` | Also write a `.pfx` | off |
+| `--pfx-password PASS` | PFX password (prefer `PFX_PASSWORD`) | empty |
+| `--skip-pfx-on-mismatch` | Skip mismatched entries instead of failing | off |
+| `--check-expiry` | Warn about certificates close to expiry | off |
+| `--expiry-days N` | Expiry warning threshold in days | `30` |
+| `--recursive` | Descend into subdirectories for the legacy layout | off |
+| `--json` | Emit a machine-readable summary on stdout | off |
 
-***
+Environment variables: `ALLOWED_TLDS`, `LOG_LEVEL` (`DEBUG`, `INFO`, `WARN`,
+`ERROR`), `PFX_PASSWORD`, `CERT_UNIFIER_LOCK`, `NO_KEY_VALIDATION`.
 
-## 9. Technical Considerations
+## Layouts
 
-### 9.1 OpenSSL Integration
-The script detects OpenSSL version capabilities at runtime. PFX `friendlyname` support is automatically enabled for OpenSSL 1.1.x and 3.x, ensuring better UI integration in Windows Certificate Manager.
+**Certbot**
 
-### 9.2 Atomic Write Mechanism
-To prevent race conditions where a web server might read a partially written certificate, **Cert Unifier** writes to `*.pem.new` and performs an atomic move/rename upon successful validation.
+```text
+/etc/letsencrypt/live/example.com/fullchain.pem
+/etc/letsencrypt/live/example.com/privkey.pem
+→ /etc/letsencrypt/live/example.com/example.com.pem
+```
 
-***
+**Legacy**
 
-## 10. License & Acknowledgments
+```text
+example.com_le10.crt      leaf certificate
+example.com_le10.crtca    chain
+example.com_le10.key      private key (or example.com.key)
+→ example.com.pem
+```
 
-### 10.1 License
-Distributed under the **PolyForm Noncommercial License 1.0.0**. See `LICENSE` for details.
+`N` may be any number. When several generations of one domain are present in
+the same directory, the highest `N` wins, so an old `_le1` never overwrites a
+newer `_le10`.
 
-### 10.2 Copyright
-Copyright (c) 2026 **Mikhail Deynekin**.
-- **Email**: [mid1977@gmail.com](mailto:mid1977@gmail.com)
-- **GitHub**: [paulmann](https://github.com/paulmann)
-- **Web**: [deynekin.com](https://deynekin.com/)
+## JSON summary
 
----
-**v2.9.0** • **Enterprise Cryptography Unification** • **Active**
-© 2026 Paulmann. Unified PKI Management.
+```bash
+./cert-unifier.sh --json /etc/letsencrypt/live
+```
+
+```json
+{
+  "version": "3.1.1",
+  "status": "success",
+  "processed": 1,
+  "skipped": 0,
+  "planned": 0,
+  "errors": 0,
+  "warnings": 0,
+  "results": [
+    {"domain": "example.com", "status": "updated", "pem": "/etc/letsencrypt/live/example.com/example.com.pem", "fingerprint": "..."}
+  ]
+}
+```
+
+`status` is `success`, `none` (nothing matched) or `error`. Warnings and errors
+still go to stderr so stdout stays parseable.
+
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Everything requested was done (in `--dry-run`, everything was planned) |
+| 1 | Runtime or validation error; at least one entry was refused |
+| 2 | No matching certificates found |
+| 130 | Interrupted by INT or TERM |
+
+## Safety
+
+- The private key is always written with mode 0600, under `umask 077`.
+- Writes are atomic in the target directory; a failed run leaves the previous
+  bundle intact.
+- The only file created outside the scanned tree is the lock file
+  (`/var/lock/cert-unifier.lock`, override with `CERT_UNIFIER_LOCK`).
+- The PFX password is passed to OpenSSL on the command line, so it is visible
+  in `ps` for the duration of that call. Prefer a short-lived environment
+  variable; an empty password produces an unencrypted PFX.
+- The script never deletes source files, never touches the network and never
+  reloads a service.
+
+## Testing
+
+```bash
+chmod +x tests/run-tests.sh
+./tests/run-tests.sh
+```
+
+The suite generates real RSA and EC fixtures with OpenSSL and asserts exit
+codes, bundle contents, permissions, idempotency, dry-run behaviour, JSON
+validity, PKCS#12 export, refusal of mismatched/missing/passphrase-protected
+keys, and cleanup. It runs in GitHub Actions on every push.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Changes
+are expected to keep `tests/run-tests.sh` and `shellcheck` clean.
+
+## License
+
+[MIT](LICENSE) © 2026 Mikhail Deynekin.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).

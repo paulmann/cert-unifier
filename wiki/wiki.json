@@ -1,0 +1,23 @@
+{
+  "repo": "paulmann/cert-unifier",
+  "branch": "main",
+  "title": "Cert Unifier",
+  "footer": "MIT License — https://github.com/paulmann/cert-unifier",
+  "groups": [
+    {
+      "title": "Overview",
+      "pages": [
+        "Home.md"
+      ]
+    },
+    {
+      "title": "Guide",
+      "pages": [
+        "01-Why-Unify.md",
+        "02-Layouts.md",
+        "03-Security.md",
+        "04-Testing.md"
+      ]
+    }
+  ]
+}

@@ -1,185 +1,233 @@
-# Cert Unifier Sicherheitsmodul
+# Cert Unifier
 
-[![Version](https://img.shields.io/badge/version-2.9.0-blue.svg)](https://github.com/paulmann/cert-unifier)
-[![Plattform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-blue.svg)](https://www.linux.org/)
-[![Bash](https://img.shields.io/badge/bash-4.0%2B-red.svg)](https://www.gnu.org/software/bash/)
-[![OpenSSL](https://img.shields.io/badge/openssl-1.1.1%2B-orange.svg)](https://www.openssl.org/)
+**Version 3.1.1** — geprüfte PEM- und PFX-Zusammenführung für Let's Encrypt, Certbot und Legacy-Layouts.
 
-<!-- md-i18n:switcher -->
-**In anderen Sprachen:** [English](README.md) · Deutsch · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
+[English](README.md) · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
 
-- [1. Überblick](#1-überblick)
-- [2. Kernfunktionen](#2-kernfunktionen)
-- [3. Systemanforderungen](#3-systemanforderungen)
-- [4. Schnellstartanleitung](#4-schnellstartanleitung)
-- [5. Installation und Einrichtung](#5-installation-und-einrichtung)
-- [6. Architektur und Komponenten](#6-architektur-und-komponenten)
-- [7. Anwendungsbeispiele](#7-anwendungsbeispiele)
-- [8. Parameterreferenz](#8-parameterreferenz)
-- [9. Technische Hinweise](#9-technische-hinweise)
-- [10. Lizenz und Danksagung](#10-lizenz-und-danksagung)
+[![CI](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml/badge.svg)](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Bash 4.0+](https://img.shields.io/badge/bash-4.0%2B-4EAA25)](https://www.gnu.org/software/bash/)
+[![OpenSSL 1.1.1+ / 3.x](https://img.shields.io/badge/openssl-1.1.1%2B%20%7C%203.x-721412)](https://www.openssl.org/)
 
-***
+## Inhalt
 
-## 1. Überblick
+- [Was es tut](#was-es-tut)
+- [Warum ein Unifier prüfen muss](#warum-ein-unifier-prüfen-muss)
+- [Anforderungen](#anforderungen)
+- [Installation](#installation)
+- [Verwendung](#verwendung)
+- [Optionen](#optionen)
+- [Layouts](#layouts)
+- [JSON-Zusammenfassung](#json-zusammenfassung)
+- [Exit-Codes](#exit-codes)
+- [Sicherheit](#sicherheit)
+- [Tests](#tests)
+- [Mitwirken](#mitwirken)
+- [Lizenz](#lizenz)
+- [Changelog](#changelog)
 
-**Cert Unifier** (v2.9.0) ist ein leistungsfähiges Bash-Modul, das das Zusammenführen, die Validierung und die Vereinheitlichung von SSL/TLS-Zertifikaten und privaten Schlüsseln zu standardisierten PEM- und PFX-Bündeln automatisiert. Es ist für DevOps-Workflows und automatisierte Bereitstellungen auf Webservern (Nginx, Apache, HAProxy) ausgelegt und gewährleistet kryptografische Konsistenz sowie atomare Dateioperationen über unterschiedliche Zertifikatsstrukturen hinweg.
+## Was es tut
 
-### Hauptzweck
-Das Modul vereinfacht die Verwaltung des Zertifikatslebenszyklus, indem es:
-- Endzertifikate und Zwischenketten mit den passenden privaten Schlüsseln zusammenführt
-- die Übereinstimmung von RSA/EC-Moduli validiert, um die Bereitstellung nicht zusammenpassender Komponenten zu verhindern
-- die Erzeugung von PKCS#12 (PFX) für Windows-/IIS-Umgebungen automatisiert
-- sichere Dateiberechtigungen (0600) für sensibles kryptografisches Material durchsetzt
-- sowohl moderne Certbot-Layouts als auch ältere Verzeichnisstrukturen unterstützt
+Cert Unifier durchsucht einen Verzeichnisbaum mit Let's-Encrypt-Material, prüft,
+ob jeder private Schlüssel wirklich zu seinem Endzertifikat gehört, und schreibt
+ein geprüftes Bündel pro Domain: den privaten Schlüssel, gefolgt von der
+vollständigen Kette.
 
-***
+- **Abgleich der öffentlichen Schlüssel** für RSA- und EC-Schlüssel (Vergleich
+  von `openssl x509 -pubkey` mit `openssl pkey -pubout`), kein Modul-Hash, der
+  nur für RSA funktioniert.
+- **Verweigert das Schreiben, was nicht geprüft werden kann**: ein nicht
+  passender Schlüssel, ein mit Passphrase geschützter Schlüssel, ein unlesbarer
+  Schlüssel oder ein fehlender Schlüssel stoppen diesen Eintrag mit einem
+  Fehler, statt ein defektes Bündel zu erzeugen.
+- **Atomare Schreibvorgänge**: Der Inhalt wird im Zielverzeichnis
+  zusammengesetzt, auf Modus 0600 gesetzt und dann über das Ziel umbenannt.
+- **Idempotent**: Ein byte-identisches Bündel bleibt unberührt (mtime bleibt
+  erhalten), und bei einem bereits vorhandenen Bündel mit Modus 0644 wird der
+  Modus korrigiert.
+- **Optionaler PKCS#12-Export** für IIS/Windows und optionale Warnungen zum
+  Ablaufdatum.
+- **Maschinenlesbare** `--json`-Zusammenfassung für die Automatisierung.
+- **Kein Netzwerkzugriff**: Das Skript fordert niemals Zertifikate an,
+  erneuert, widerruft oder installiert sie und lädt niemals einen Dienst neu.
 
-## 2. Kernfunktionen
+## Warum ein Unifier prüfen muss
 
-### 2.1 Einheitliche PEM-Zusammensetzung
-- **Atomare Schreibvorgänge**: Verwendet temporäre Puffer, um die Dateiintegrität beim Zusammenführen zu gewährleisten
-- **Normalisierung der Zeilenumbrüche**: Garantiert eine korrekte Trennung zwischen Schlüssel- und Kettenkomponenten
-- **Automatische Erkennung**: Intelligentes Durchsuchen älterer und moderner Certbot-Layouts
+Ein Bündel ist nur nützlich, wenn der darin enthaltene Schlüssel zum Zertifikat
+passt. Die üblichen Fehlerfälle verlaufen still: Certbot rotiert den privaten
+Schlüssel bei der Erneuerung, Legacy-Layouts halten `_le1`, `_le2`, `_le10`
+nebeneinander, und Betreiber kopieren den falschen Schlüssel. Ein Webserver,
+der mit einem nicht passenden Schlüssel startet, scheitert später beim
+Handshake — zum ungünstigsten Zeitpunkt. Cert Unifier behandelt die
+Übereinstimmung von Schlüssel und Zertifikat als Voraussetzung, nicht als
+Warnung.
 
-### 2.2 Erweiterte kryptografische Validierung
-- **Modulprüfung**: Tiefgehende Validierung privater Schlüssel gegen Zertifikate vor der Vereinheitlichung
-- **Schlüsselintegrität**: Unterstützung mehrerer Engines (RSA/EC) zum Extrahieren und Vergleichen von Moduli
-- **PFX-Zuordnung**: v2.9.0 führt die automatische Erkennung passender Schlüssel-/Zertifikatspaare für die PKCS#12-Erzeugung ein
+## Anforderungen
 
-### 2.3 Umfassende Layout-Unterstützung
-- **Certbot-nativ**: Native Verarbeitung von `/etc/letsencrypt/live`-Strukturen
-- **Altbestand**: Unterstützung der Namenskonventionen `leX.crt` und `leX.key`
-- **TLD-Filterung**: Anpassbare Domainverarbeitung anhand von Top-Level-Domains (Standard: .ru, .com)
+| Anforderung | Warum |
+|-------------|-----|
+| Bash 4.0 oder neuer | Arrays, `shopt`, Prozesssubstitution |
+| `openssl` 1.1.1 oder 3.x | Abgleich öffentlicher Schlüssel, PEM-Validierung, PKCS#12-Export |
+| `flock` (optional) | verhindert, dass zwei Läufe denselben Baum anfassen |
+| Lesezugriff auf Schlüssel und Zertifikate | der private Schlüssel wird ins Bündel gelesen |
+| Schreibzugriff auf das Ausgabeverzeichnis | Bündel werden neben den Quellen geschrieben |
 
-### 2.4 Funktionen für den Unternehmenseinsatz
-- **Dry-Run-Modus**: Vollständige Validierung von Eingaben und Ausgabepfaden ohne Änderung des Dateisystems
-- **Sichere Berechtigungen**: Automatische Vergabe von 0600-Berechtigungen für private Schlüssel und PFX-Dateien
-- **Protokollierungsarchitektur**: Mehrstufige Protokollierung (DEBUG, INFO, WARN, ERROR) mit Zeitstempeln
+Linux, macOS und WSL werden unterstützt. macOS liefert Bash 3.2 mit;
+installieren Sie ein neueres Bash (`brew install bash`) oder führen Sie das
+Skript mit `bash` aus Homebrew aus.
 
-***
+## Installation
 
-## 3. Systemanforderungen
-
-### 3.1 Mindestanforderungen
-- **Betriebssystem**: Linux (jede moderne Distribution), macOS oder WSL
-- **Shell**: Bash 4.0 oder neuer
-- **Dienstprogramme**: `openssl`, `grep`, `awk`, `date`
-- **Berechtigungen**: Lesezugriff auf die Quellzertifikate; Schreibzugriff auf die Ausgabeverzeichnisse
-
-### 3.2 Empfohlene Konfiguration
-- **OpenSSL**: 1.1.1+ (unterstützt moderne ECC- und Friendly-Name-Attribute)
-- **Dateisystem**: Standard-Berechtigungsmodell von Linux/Unix wird unterstützt
-- **Abhängigkeiten**: Vollständiges `openssl`-Toolkit für die PFX-Erzeugung und tiefgehende Schlüsselvalidierung
-
-***
-
-## 4. Schnellstartanleitung
-
-### 4.1 Bereitstellung in 3 Schritten
-
-**Schritt 1: Skript herunterladen**
 ```bash
 wget https://raw.githubusercontent.com/paulmann/cert-unifier/main/cert-unifier.sh
 chmod +x cert-unifier.sh
+./cert-unifier.sh --version
 ```
 
-**Schritt 2: Grundlegende Vereinheitlichung**
-```bash
-./cert-unifier.sh /var/www/httpd-cert
-```
-
-**Schritt 3: Erweiterte PFX-Erzeugung**
-```bash
-./cert-unifier.sh --pfx --pfx-password "your_password" /etc/letsencrypt/live
-```
-
-***
-
-## 5. Installation und Einrichtung
-
-### 5.1 Manuelle Installation
-1. Verschieben Sie das Skript in ein Verzeichnis der System-PATH (z. B. `/usr/local/bin`)
-2. Stellen Sie sicher, dass die Abhängigkeiten vorhanden sind: `apt install openssl grep awk`
-3. Konfigurieren Sie bei Bedarf Umgebungsvariablen:
-   - `ALLOWEDTLDS="ru com org"`
-   - `LOGLEVEL="INFO"`
-
-### 5.2 Automatisierte CI/CD-Einrichtung
-In Unternehmensumgebungen erfolgt die Integration über GitLab CI oder GitHub Actions:
-```yaml
-- name: Unify Certificates
-  run: |
-    export ALLOWEDTLDS="com net"
-    ./cert-unifier.sh --no-key-validation --output-dir ./dist /certs/source
-```
-
-***
-
-## 6. Architektur und Komponenten
-
-### 6.1 Logischer Ablauf
-1. **Umgebungsprüfung**: Validiert OpenSSL-Version und Abhängigkeiten
-2. **Verzeichnisdurchlauf**: Iteriert über das Zielstammverzeichnis und erkennt die Layouts
-3. **Validierung**: Extrahiert Moduli; vergleicht Schlüssel-Zertifikat-Paare
-4. **Zusammensetzung**: Concat(key, chain) -> atomares Schreiben nach .pem
-5. **PFX-Erzeugung** (optional): Wandelt das PEM-Bündel in PKCS#12 um
-
-***
-
-## 7. Anwendungsbeispiele
+Systemweit:
 
 ```bash
-# Dry run with verbose debugging
+sudo install -m 755 cert-unifier.sh /usr/local/bin/cert-unifier
+```
+
+## Verwendung
+
+```bash
+# 1. inspect the tree without writing anything
 ./cert-unifier.sh --dry-run --verbose /etc/letsencrypt/live
 
-# Process all domains (no TLD filtering)
-./cert-unifier.sh --no-tld-filter /var/www/certs
+# 2. run it on one domain directory, then on the whole tree
+./cert-unifier.sh /etc/letsencrypt/live/example.com
+./cert-unifier.sh /etc/letsencrypt/live
 
-# Generate PFX files and skip mismatches
-./cert-unifier.sh --pfx --skip-pfx-on-mismatch /opt/certs
+# 3. PEM plus PKCS#12 (the password is read from the environment)
+PFX_PASSWORD='...' ./cert-unifier.sh --pfx /var/www/certs
 
-# Override output directory
-./cert-unifier.sh -o /tmp/unified_certs /var/www/certs
+# 4. legacy tree with more than one generation per domain
+./cert-unifier.sh --no-tld-filter --recursive /opt/certs
 ```
 
-***
+Jeder verarbeitete Eintrag schreibt `<domain>.pem` (privater Schlüssel, dann
+Endzertifikat, dann Zwischenzertifikate) neben seine Quelldateien oder, wenn
+angegeben, in `--output-dir`.
 
-## 8. Parameterreferenz
+## Optionen
 
 | Option | Beschreibung | Standard |
-| :--- | :--- | :--- |
-| `-d, --dry-run` | Validieren ohne Dateien zu schreiben | `false` |
-| `-v, --verbose` | DEBUG-Protokollierung aktivieren | `false` |
-| `-t, --tlds` | Liste der zulässigen TLDs | `ru com` |
-| `-o, --output-dir` | Ausgabepfad überschreiben | Eingabeverzeichnis |
-| `--no-tld-filter` | Alle Domains verarbeiten | `false` |
-| `--pfx` | PKCS12-Dateien erzeugen | `false` |
-| `--pfx-password`| PFX-Passwort setzen | Leer |
+|--------|-------------|---------|
+| `-h, --help` | Hilfe anzeigen und beenden | |
+| `-V, --version` | Version anzeigen und beenden | |
+| `-d, --dry-run` | Prüfen und berichten, nichts schreiben | aus |
+| `-v, --verbose` | DEBUG-Protokollierung | aus |
+| `-t, --tlds LIST` | Zulässige TLDs, durch Komma oder Leerzeichen getrennt | `ru com` |
+| `-o, --output-dir PATH` | Bündel hier statt neben den Quellen schreiben | wie Quelle |
+| `--no-tld-filter` | Jede Domain verarbeiten | aus |
+| `--no-key-validation` | Bündeln, auch wenn der Schlüssel nicht geprüft werden kann | aus |
+| `--pfx` | Zusätzlich eine `.pfx` schreiben | aus |
+| `--pfx-password PASS` | PFX-Passwort (bevorzugt `PFX_PASSWORD`) | leer |
+| `--skip-pfx-on-mismatch` | Nicht passende Einträge überspringen statt zu scheitern | aus |
+| `--check-expiry` | Vor Zertifikaten kurz vor dem Ablauf warnen | aus |
+| `--expiry-days N` | Schwellwert der Ablaufwarnung in Tagen | `30` |
+| `--recursive` | Für das Legacy-Layout in Unterverzeichnisse absteigen | aus |
+| `--json` | Maschinenlesbare Zusammenfassung auf stdout ausgeben | aus |
 
-***
+Umgebungsvariablen: `ALLOWED_TLDS`, `LOG_LEVEL` (`DEBUG`, `INFO`, `WARN`,
+`ERROR`), `PFX_PASSWORD`, `CERT_UNIFIER_LOCK`, `NO_KEY_VALIDATION`.
 
-## 9. Technische Hinweise
+## Layouts
 
-### 9.1 OpenSSL-Integration
-Das Skript erkennt die Fähigkeiten der OpenSSL-Version zur Laufzeit. Die PFX-Unterstützung für `friendlyname` wird für OpenSSL 1.1.x und 3.x automatisch aktiviert, was eine bessere Einbindung in die Oberfläche des Windows-Zertifikat-Managers gewährleistet.
+**Certbot**
 
-### 9.2 Mechanismus für atomares Schreiben
-Um Race Conditions zu vermeiden, bei denen ein Webserver ein nur teilweise geschriebenes Zertifikat lesen könnte, schreibt **Cert Unifier** nach `*.pem.new` und führt nach erfolgreicher Validierung ein atomares Verschieben bzw. Umbenennen durch.
+```text
+/etc/letsencrypt/live/example.com/fullchain.pem
+/etc/letsencrypt/live/example.com/privkey.pem
+→ /etc/letsencrypt/live/example.com/example.com.pem
+```
 
-***
+**Legacy**
 
-## 10. Lizenz und Danksagung
+```text
+example.com_le10.crt      leaf certificate
+example.com_le10.crtca    chain
+example.com_le10.key      private key (or example.com.key)
+→ example.com.pem
+```
 
-### 10.1 Lizenz
-Veröffentlicht unter der **PolyForm Noncommercial License 1.0.0**. Einzelheiten siehe `LICENSE`.
+`N` kann eine beliebige Zahl sein. Sind mehrere Generationen einer Domain im
+selben Verzeichnis vorhanden, gewinnt das höchste `N`, sodass ein altes `_le1`
+niemals ein neueres `_le10` überschreibt.
 
-### 10.2 Urheberrecht
-Copyright (c) 2026 **Mikhail Deynekin**.
-- **E-Mail**: [mid1977@gmail.com](mailto:mid1977@gmail.com)
-- **GitHub**: [paulmann](https://github.com/paulmann)
-- **Web**: [deynekin.com](https://deynekin.com/)
+## JSON-Zusammenfassung
 
----
-**v2.9.0** • **Vereinheitlichung von Unternehmenskryptografie** • **Aktiv**
-© 2026 Paulmann. Einheitliche PKI-Verwaltung.
+```bash
+./cert-unifier.sh --json /etc/letsencrypt/live
+```
+
+```json
+{
+  "version": "3.1.1",
+  "status": "success",
+  "processed": 1,
+  "skipped": 0,
+  "planned": 0,
+  "errors": 0,
+  "warnings": 0,
+  "results": [
+    {"domain": "example.com", "status": "updated", "pem": "/etc/letsencrypt/live/example.com/example.com.pem", "fingerprint": "..."}
+  ]
+}
+```
+
+`status` ist `success`, `none` (nichts passte) oder `error`. Warnungen und
+Fehler gehen weiterhin nach stderr, damit stdout parsebar bleibt.
+
+## Exit-Codes
+
+| Code | Bedeutung |
+|------|---------|
+| 0 | Alles Angeforderte wurde erledigt (in `--dry-run` wurde alles geplant) |
+| 1 | Laufzeit- oder Validierungsfehler; mindestens ein Eintrag wurde abgelehnt |
+| 2 | Keine passenden Zertifikate gefunden |
+| 130 | Durch INT oder TERM unterbrochen |
+
+## Sicherheit
+
+- Der private Schlüssel wird immer mit Modus 0600 und unter `umask 077`
+  geschrieben.
+- Schreibvorgänge sind im Zielverzeichnis atomar; ein fehlgeschlagener Lauf
+  lässt das vorherige Bündel intakt.
+- Die einzige Datei, die außerhalb des durchsuchten Baums angelegt wird, ist die
+  Sperrdatei (`/var/lock/cert-unifier.lock`, überschreibbar mit
+  `CERT_UNIFIER_LOCK`).
+- Das PFX-Passwort wird OpenSSL auf der Kommandozeile übergeben und ist damit
+  für die Dauer dieses Aufrufs in `ps` sichtbar. Bevorzugen Sie eine kurzlebige
+  Umgebungsvariable; ein leeres Passwort erzeugt eine unverschlüsselte
+  PFX-Datei.
+- Das Skript löscht niemals Quelldateien, greift niemals auf das Netzwerk zu
+  und lädt niemals einen Dienst neu.
+
+## Tests
+
+```bash
+chmod +x tests/run-tests.sh
+./tests/run-tests.sh
+```
+
+Die Testsuite erzeugt echte RSA- und EC-Fixtures mit OpenSSL und prüft
+Exit-Codes, Bündelinhalte, Berechtigungen, Idempotenz, das Verhalten im
+Dry-Run, die JSON-Gültigkeit, den PKCS#12-Export, die Verweigerung bei nicht
+passenden, fehlenden und mit Passphrase geschützten Schlüsseln sowie die
+Aufräumarbeiten. Sie läuft bei jedem Push in GitHub Actions.
+
+## Mitwirken
+
+Siehe [CONTRIBUTING.md](CONTRIBUTING.md) und [SECURITY.md](SECURITY.md).
+Änderungen sollen `tests/run-tests.sh` und `shellcheck` sauber halten.
+
+## Lizenz
+
+Veröffentlicht unter der Lizenz [MIT](LICENSE), © 2026 Mikhail Deynekin.
+
+## Changelog
+
+Siehe [CHANGELOG.md](CHANGELOG.md).

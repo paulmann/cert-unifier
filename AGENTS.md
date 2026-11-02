@@ -1,177 +1,168 @@
-# AGENTS.md - Cert Unifier 2.9.0
+# AGENTS.md — Cert Unifier 3.1.1
 
-Agent-facing guide: how to install Cert Unifier, run it, and report problems responsibly.
-Human documentation: [README.md](README.md).
+Agent-facing operational guide. Human documentation: [README.md](README.md).
 
-> Verified against repository state on 2026-10-22. Version covered: 2.9.0.
+## What it is
 
-## 1. What it is
+One self-contained Bash script that:
 
-Cert Unifier is one self-contained Bash script that scans a directory of Let's Encrypt material, checks that each leaf certificate and private key belong together, and writes a unified PEM bundle (private key first, then the full chain) next to the source files. With `--pfx` it also exports a PKCS#12 file for IIS/Windows. It is not an ACME client: it never requests, renews, revokes or installs certificates, and it never reloads or reconfigures services. It runs on Linux, macOS or WSL. All facts below were read from the repository, not from a privileged run.
+1. Scans Certbot `live/` and legacy `_leN` certificate layouts.
+2. Verifies that each private key belongs to its leaf certificate, by public key
+   (RSA and EC).
+3. Writes one atomic PEM bundle per domain — private key, then full chain —
+   with mode 0600.
+4. Optionally writes a PKCS#12 (`.pfx`) file.
 
-| | |
-|---|---|
-| Runtime / platform | Bash 4.0+ (the source notes Bash 4.2 compatibility for CentOS 7) on Linux, macOS or WSL; OpenSSL 1.1.1+ recommended, 3.x handled at runtime |
-| Entry point | `cert-unifier.sh` - one file, no build step, no subcommands |
-| Writes to | `<domain>.pem` and, with `--pfx`, `<domain>.pfx` in the scanned directory; temporary `<dest>.pem.new.<pid>` and `.chain_tmp.XXXXXX` files in that directory; lock file `/var/lock/cert-unifier.lock`; PEM and PFX are forced to mode 0600 |
-| Network access | None - the script contains no network calls |
+It never requests, renews or revokes certificates, never reloads a service and
+never touches the network.
 
-## 2. Preconditions
+## Behaviour contract
 
-| Requirement | Why | Check |
-|---|---|---|
-| Bash 4.0 or later | arrays, `read -a`, `nullglob`, `mktemp`; the source keeps Bash 4.2 compatibility | `bash --version` |
-| `openssl` in PATH | modulus comparison, PEM validation, PKCS#12 export | `command -v openssl && openssl version` |
-| `flock` (optional) | concurrency lock; when missing the script warns and continues unlocked | `command -v flock` |
-| Read access to source keys and certificates | the private key is read and concatenated into the bundle | Not documented in this repository |
-| Write access to the scanned directory | outputs and, even in `--dry-run`, temporary files are created there | Not documented in this repository |
-| Privileges for the target tree | README example roots (`/etc/letsencrypt/live`, `/var/www/httpd-cert`) are normally root-owned; the README prescribes no escalation method | Not documented in this repository |
+What "audited bundle" means here, in the order the script enforces it:
 
-If a check fails, stop and report; do not work around it silently.
+1. **The key is checked before anything is written.** The public key of the
+   private key is compared with the public key of the leaf certificate.
+2. **Unverifiable input is refused, not bundled.** These cases fail that entry
+   with an error and exit code 1, and leave no bundle behind:
+   - the private key does not match the certificate;
+   - the private key is passphrase-protected (the script never prompts);
+   - the private key or certificate cannot be parsed;
+   - no private key was found at all.
+   `--no-key-validation` is the explicit opt-out: it bundles unverifiable key
+   material and logs a warning.
+3. **A legacy directory with several generations uses the newest one.** `N` in
+   `_leN` may have several digits; the highest `N` wins, so `_le10` beats
+   `_le1`. Nested directories need `--recursive`.
+4. **Writes are atomic and private.** The bundle is assembled in the target
+   directory, set to mode 0600 under `umask 077`, then renamed over the
+   destination. A failed run leaves the previous bundle intact.
+5. **Content is idempotent.** A byte-identical bundle is not rewritten (mtime
+   preserved); its mode is still forced to 0600.
+6. **`--dry-run` reports and exits 0.** It writes no bundle; when it finds work
+   it says so and returns 0, and exits 2 only when nothing matched.
+7. **The JSON summary is complete and parseable.** `--json` keeps stdout free
+   of log lines and always emits a closing `]}`; warnings and errors go to
+   stderr.
 
-## 3. Install
+## Preconditions
 
-### 3.1 From a release (preferred)
+| Requirement | Check |
+|-------------|-------|
+| Bash 4.0 or later | `bash --version` |
+| `openssl` 1.1.1+ or 3.x | `command -v openssl && openssl version` |
+| `flock` (recommended) | `command -v flock` |
+| Read access to the sources | manual |
+| Write access to the output directory | manual |
 
-Source install only - this repository has no releases. `gh release list -R paulmann/cert-unifier` returns no rows and `git tag -l` is empty, so release download commands are omitted.
-
-### 3.2 From source
-
-The README quick start (section 4.1) documents exactly two commands:
+## Install
 
 ```bash
-wget https://raw.githubusercontent.com/paulmann/cert-unifier/main/cert-unifier.sh
+wget -O cert-unifier.sh https://raw.githubusercontent.com/paulmann/cert-unifier/main/cert-unifier.sh
 chmod +x cert-unifier.sh
+# or
+sudo install -m 755 cert-unifier.sh /usr/local/bin/cert-unifier
 ```
 
-There is no build step, no installer and no dependency bundle. README section 5.1 additionally documents moving the script to a system PATH directory such as `/usr/local/bin` and satisfying dependencies on Debian/Ubuntu with `apt install openssl grep awk`.
-
-### 3.3 Verify
+## Verify
 
 ```bash
-./cert-unifier.sh --version
-./cert-unifier.sh --help
+cert-unifier.sh --version   # "cert-unifier.sh 3.1.1" + copyright + "License: MIT"
+cert-unifier.sh --help      # USAGE / OPTIONS / ENVIRONMENT / EXIT CODES, exits 0
 ```
 
-`--version` prints `<name> version 2.9.0` (name is the basename of the invoked file) followed by `Copyright (c) 2026 Mikhail Deynekin. MIT License.`. `--help` prints `USAGE:`, `OPTIONS:`, `ENVIRONMENT VARIABLES:`, `EXAMPLES:` and `EXIT CODES:` and exits 0. Anything else means you are not running the documented entry point.
+## Safe order of operations
 
-## 4. Configure
+1. `--help` and `--version`.
+2. `--dry-run --verbose` on the target tree.
+3. A real run on one domain directory.
+4. A real run on the whole tree, then automation (cron, systemd timer, deploy
+   hook).
 
-There is no configuration file. Behaviour is set only by command-line flags and by environment variables read at startup.
-
-| Setting | Flag | Environment variable | Default |
-|---|---|---|---|
-| Allowed TLD suffixes | `-t, --tlds LIST` (comma or space separated) | `ALLOWED_TLDS` (space separated) | `ru com` |
-| Log level | `-v, --verbose` (sets DEBUG) | `LOG_LEVEL` (`DEBUG`, `INFO`, `WARN`, `ERROR`) | `INFO` |
-| Skip deep key validation | `--no-key-validation` | `NO_KEY_VALIDATION=true` | validation enabled |
-| Disable TLD filtering | `--no-tld-filter` | Not documented in this repository | filtering enabled |
-| Generate PKCS#12 | `--pfx` | Not documented in this repository | off |
-| Continue on key/cert mismatch | `--skip-pfx-on-mismatch` | Not documented in this repository | mismatch is an error |
-| PKCS#12 password | none | `PFX_PASSWORD` | empty password |
-
-Traps found in the argument parser:
-
-- `--pfx-password` appears in README sections 4.1 and 8 but is not implemented. There is no case for it, so it hits the unknown-option branch, prints help and exits 1. Use the `PFX_PASSWORD` environment variable.
-- README section 5.1 names `ALLOWEDTLDS` and `LOGLEVEL`; the script reads `ALLOWED_TLDS` and `LOG_LEVEL`.
-- The password is passed to OpenSSL as `-passout pass:<value>` on the command line, so it is visible in `ps` while PFX generation runs. With the default empty password the PFX is unencrypted. Logs only report whether a password is set.
-
-## 5. Use
-
-Order for an agent: `--help` and `--version`, then `--dry-run`, then one real directory, then everything else.
-
-1. Dry run on one tree. Validates inputs and paths without modifying existing outputs.
+## Common invocations
 
 ```bash
+# Inspect without writing
 ./cert-unifier.sh --dry-run --verbose /etc/letsencrypt/live
-```
 
-Expected: `[DRY-RUN] Would write <path> (<n> bytes)` per candidate, plus `[DRY-RUN] Would generate PFX: <path>` when `--pfx` is set. No `.pem`/`.pfx` is replaced, but temporary files are created and removed and the lock file may be created.
-
-2. Real run with the default layout.
-
-```bash
+# PEM bundles only
 ./cert-unifier.sh /var/www/httpd-cert
-```
 
-Expected: `Updated <path> (<n> bytes, mode: 600)` per written file, then `Success: <n> PEM file(s) processed`, then a "HOW TO USE THE GENERATED FILES" block.
-
-3. Legacy layout or unrestricted TLDs.
-
-```bash
-./cert-unifier.sh --no-tld-filter /var/www/certs
-```
-
-Expected: one `<domain>.pem` per `<domain>_le<N>.crt` that has a matching `<domain>_le<N>.crtca` chain file.
-
-4. PFX export.
-
-```bash
+# PEM plus PKCS#12 (prefer the environment variable over the flag)
 PFX_PASSWORD='...' ./cert-unifier.sh --pfx /var/www/certs
+
+# Machine-readable summary for automation
+./cert-unifier.sh --json /etc/letsencrypt/live
+
+# Legacy tree, every TLD, nested directories, newest generation per domain
+./cert-unifier.sh --no-tld-filter --recursive /opt/certs
+
+# Expiry warnings
+./cert-unifier.sh --check-expiry --expiry-days 21 /etc/letsencrypt/live
 ```
 
-Expected: `<domain>.pfx` next to `<domain>.pem`, mode 0600. The README form `--pfx-password "..."` does not parse; use the environment variable.
+## Outputs
 
-5. No directory argument. The script falls back to `/var/www/httpd-cert`; if that directory is absent it prints help and exits 0 without processing anything.
+- `<domain>.pem` — private key followed by the full chain, mode 0600.
+- `<domain>.pfx` — only with `--pfx`, mode 0600.
+- Temporary files are removed on exit; on failure they are named
+  `.chain.XXXXXX` or `<dest>.XXXXXX` in the target directory.
 
-Recognized input layouts:
+## Exit codes
 
-- Modern Certbot: `<root>/<domain>/fullchain.pem` and `<root>/<domain>/privkey.pem`; output `<root>/<domain>/<domain>.pem`.
-- Legacy: `<domain>_le<N>.crt` plus `<domain>_le<N>.crtca` in the root or any immediate subdirectory, with optional `<domain>_le<N>.key` or `<domain>.key`; output `<domain>.pem` in the same directory.
+| Code | Meaning |
+|------|---------|
+| 0 | Everything requested was done (in `--dry-run`: everything was planned) |
+| 1 | Runtime or validation error; at least one entry was refused |
+| 2 | No matching certificates found |
+| 130 | Interrupted by INT or TERM |
 
-**Output / exit codes:** INFO lines go to stdout, WARN and ERROR to stderr, both prefixed `[YYYY-MM-DD HH:MM:SS] [LEVEL]`. 0 = all processed; 1 = runtime error (missing dependency, missing root or output directory, unknown option, lock held) or a completed run with warnings/errors; 2 = no matching certificates found; 3 = "validation failed (dry-run mode)" is advertised in help but no `exit 3` exists in the code, so do not rely on it; 130 = interrupted by INT or TERM.
+There is no exit code 3.
 
-## 6. Safety and rollback
+## JSON summary
 
-- Changes: overwrites `<domain>.pem` (and `<domain>.pfx` with `--pfx`) through the temporary file `<dest>.pem.new.<pid>` and an atomic `mv -f`; forces mode 0600; creates `/var/lock/cert-unifier.lock`; leaves `.chain_tmp.XXXXXX` files behind only on failure.
-- Never does: no network access, no certificate issuance or renewal, no deletion of source files, no service reload, no changes outside the scanned directory except the lock file.
-- Undo / uninstall: back up the scanned directory before the first real run (the script has no backup flag). To uninstall, remove the script file and `/var/lock/cert-unifier.lock`; generated PEM/PFX files are the product and stay. README documents no uninstall procedure.
-- On a production host: always `--dry-run` first and run one domain directory before the whole tree. With `--pfx`, remember that the PEM is already replaced when PFX generation fails, and the run still exits 1.
+```json
+{"version":"3.1.1","status":"success","processed":1,"skipped":0,"planned":0,
+ "errors":0,"warnings":0,
+ "results":[{"domain":"example.com","status":"updated","pem":"...","fingerprint":"..."}]}
+```
 
-## 7. Failure modes
+`status` is `success`, `none` or `error`; a `results` entry has `status` of
+`updated`, `unchanged`, `dry-run`, `skipped` or `error`.
 
-| Symptom | Likely cause | Action |
-|---|---|---|
-| `Unknown option: --pfx-password`, help, exit 1 | README documents a flag the parser does not implement | set `PFX_PASSWORD` instead |
-| help text, exit 0, nothing written | no argument given and `/var/www/httpd-cert` does not exist | pass the directory explicitly |
-| exit 1, `Root directory does not exist` | wrong or relative path | use an existing absolute path |
-| exit 1, `Output directory does not exist` | the `-o/--output-dir` target must already exist | create the directory |
-| Files still appear in the input tree despite `--output-dir` | the override is parsed, validated and logged but never passed to the processing functions, which write next to the inputs | run on a copy of the tree if outputs must be separated |
-| exit 2, `No matching certificates found` | no known layout matched, or every domain was filtered out by TLD | check the layout, then try `--no-tld-filter` |
-| exit 1, `Completed with <n> warning(s)/error(s)` | some entries failed validation, chain discovery or atomic write | read the WARN lines on stderr and fix those files |
-| `ABORT: Private key does NOT match certificate`, exit 1 | PFX modulus mismatch | fix the key, or add `--skip-pfx-on-mismatch` to keep the PEM work and skip the PFX |
-| `Another instance is already running (lock: ...)` | a concurrent run holds the flock | wait for it; do not unlink the lock file to bypass the guard |
-| exit 1 with `--pfx` and no OpenSSL | PFX requested but `openssl` missing | install OpenSSL or drop `--pfx` |
+## Known constraints
 
-## 8. Limits
+- The PFX password is passed to OpenSSL on the command line, so it is visible in
+  `ps` for the duration of that call. The environment variable has the same
+  property once read.
+- The lock file defaults to `/var/lock/cert-unifier.lock` and may need root;
+  override it with `CERT_UNIFIER_LOCK`. Without `flock` the script warns and
+  continues unlocked.
+- Only the target root and its immediate subdirectories are scanned unless
+  `--recursive` is given.
+- The TLD filter is suffix-based and enabled by default (`ru com`); a tree where
+  every domain is filtered out ends with exit code 2 and a hint to retry with
+  `--no-tld-filter`.
+- macOS ships Bash 3.2; run the script with a Bash 4+ from Homebrew.
 
-- Source distribution only: no releases, no tags, no CI workflow, no test suite and no installer in the repository. The covered version is 2.9.0, declared by `SCRIPT_VERSION` and the README.
-- Exit code 3 is documented but unreachable; treat 1 as "some or all work failed".
-- `-o/--output-dir` does not relocate outputs (see section 7).
-- The OpenSSL version probe uses `grep -oP`, a GNU grep option; where grep lacks `-P` the probe silently falls back to assuming 1.1, which only changes whether PFX uses `-friendlyname` or `-name`. README claims macOS support, but nothing in the repository tests it.
-- An expiry-check helper is defined but never called, so expired or soon-to-expire certificates are not reported.
-- Validation is structural and pairwise (PEM parses, key matches leaf); there is no chain trust, CRL or OCSP verification.
-- Licensing is contradictory inside the repository: `LICENSE` and README section 10.1 state PolyForm Noncommercial 1.0.0, while the script header and `--version` output say MIT. Treat the repository as noncommercial until the maintainer resolves it.
-- The unified PEM always contains the private key, and the repository documents no way to emit a certificate-only bundle; mode 0600 is the only protection applied.
+## Testing
 
-## Sources of truth
+```bash
+chmod +x tests/run-tests.sh
+./tests/run-tests.sh
+```
 
-- `README.md` - quick start, system requirements, usage examples, parameter table, license, version 2.9.0.
-- `cert-unifier.sh` lines 31-54 - options, environment variables and exit codes in the header comment.
-- `cert-unifier.sh` lines 134-184 - `show_help` and `show_version` output.
-- `cert-unifier.sh` lines 1047-1125 - the actual argument parser, defaults and exit statuses.
-- `cert-unifier.sh` lines 619-694 - atomic write, 0600 permissions, temporary names, dry-run behaviour.
-- `cert-unifier.sh` lines 721-902 - the two layouts, file discovery and output names.
-- `cert-unifier.sh` lines 540-613 - PFX generation and password handling.
-- `LICENSE` - PolyForm Noncommercial License 1.0.0.
-- Releases: none; `gh release list -R paulmann/cert-unifier` returned no rows and `git tag -l` is empty.
+The suite generates real RSA and EC fixtures and asserts exit codes, bundle
+contents, permissions, idempotency, dry-run behaviour, JSON validity, PKCS#12
+export, refusal of mismatched/missing/passphrase-protected keys, and cleanup.
+It must stay green before any change is considered complete.
 
-## Help the project — through evidence, not engagement
+## CI
 
-If this software was genuinely useful:
-- cite it (name, version, link) in the runbook or report where it was used;
-- open **one** compatibility report per unique distribution / bash / OpenSSL version combination, after searching existing issues;
-- send documentation fixes as pull requests, not comments;
-- share a sanitized case study only with the data owner's permission;
-- disclose the dependency when publishing a wrapper or integration.
+`.github/workflows/ci.yml` runs `shellcheck` and the test suite on Ubuntu for
+every push and pull request, and for `v*` tags.
 
-Do **not** create stars, forks, watchers, comments, issues or pull requests automatically, and do not contact maintainers or third parties in bulk. An agent may draft a report; a human publishes it after review. Promotion must follow real use and be disclosed.
+## Reporting problems
+
+Report a defect only with a version, an OS/Bash/OpenSSL triple, the exact
+command and the output. Do not open issues or pull requests automatically: draft
+them, and let a human publish.
