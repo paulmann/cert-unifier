@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- Documentation: added a banner and a social preview to the README header.
+- Documentation: added the community and repository-health files
+  (`CODE_OF_CONDUCT.md`, `SUPPORT.md`, `CITATION.cff`, `.github/CODEOWNERS`,
+  `.github/dependabot.yml`, a pull-request template and issue forms) plus
+  `.gitattributes` and `.editorconfig`.
+- Documentation: expanded the wiki sources and condensed `AGENTS.md` into a
+  contract under the 120-line agent-documentation limit, linking the README and
+  wiki for detail.
+- Documentation: changed the security contact to GitHub private vulnerability
+  reporting, with a role address as the fallback; no personal address remains in
+  the tree.
+- Documentation: corrected the Certbot usage examples in the six READMEs and
+  `AGENTS.md`; the argument is the tree root, not a single domain directory,
+  which matches nothing and exits 2.
+
+### Fixed
+
+- `NO_KEY_VALIDATION` is honoured as an environment variable, as `--help` and
+  the READMEs always documented. Previously the internal flag ignored the
+  environment and only `--no-key-validation` had an effect.
+- The `--no-key-validation` opt-out now reports a warning per bundled entry, as
+  `AGENTS.md` and the wiki stated; it used to log at DEBUG level only.
 
 ## [3.1.1] - 2026-11-02
 
@@ -80,8 +103,12 @@ are folded into this entry.
 
 ## [2.9.0] - 2026-10-22
 
-Initial public release: Certbot and legacy layouts, modulus-based key/cert
-checks, PEM and optional PFX output, dry-run, TLD filter and a concurrency lock.
+### Added
 
+- Initial public release: Certbot and legacy layouts, modulus-based key/cert
+  checks, PEM and optional PFX output, dry-run, TLD filter and a concurrency
+  lock.
+
+[Unreleased]: https://github.com/paulmann/cert-unifier/compare/v3.1.1...HEAD
 [3.1.1]: https://github.com/paulmann/cert-unifier/releases/tag/v3.1.1
 [2.9.0]: https://github.com/paulmann/cert-unifier/releases/tag/v2.9.0

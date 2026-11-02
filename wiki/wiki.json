@@ -5,18 +5,34 @@
   "footer": "MIT License — https://github.com/paulmann/cert-unifier",
   "groups": [
     {
-      "title": "Overview",
+      "title": "Getting started",
       "pages": [
-        "Home.md"
+        "Home.md",
+        "01-Why-Unify.md",
+        "07-Install-and-Upgrade.md"
       ]
     },
     {
-      "title": "Guide",
+      "title": "Reference",
       "pages": [
-        "01-Why-Unify.md",
         "02-Layouts.md",
+        "05-Command-Reference.md",
+        "06-JSON-and-Exit-Codes.md"
+      ]
+    },
+    {
+      "title": "Operations",
+      "pages": [
         "03-Security.md",
-        "04-Testing.md"
+        "08-Troubleshooting.md"
+      ]
+    },
+    {
+      "title": "Project",
+      "pages": [
+        "09-Architecture.md",
+        "04-Testing.md",
+        "10-FAQ.md"
       ]
     }
   ]
