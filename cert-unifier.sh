@@ -44,7 +44,12 @@ readonly LOG_TS_FMT="+%Y-%m-%d %H:%M:%S"
 # -----------------------------------------------------------------------------
 ALLOWED_TLDS="${ALLOWED_TLDS:-ru com}"
 NO_TLD_FILTER=false
-NO_KEY_VALIDATION=false
+# NO_KEY_VALIDATION is documented in --help and the README as an environment
+# variable, so the environment is honoured as the default the flag overrides.
+case "${NO_KEY_VALIDATION:-false}" in
+    true|TRUE|True|1|yes) NO_KEY_VALIDATION=true ;;
+    *) NO_KEY_VALIDATION=false ;;
+esac
 GENERATE_PFX=false
 SKIP_PFX_ON_MISMATCH=false
 CHECK_EXPIRY=false
@@ -473,7 +478,7 @@ atomic_write_pem() {
                 ;;
         esac
     else
-        log_debug "Private key validation disabled (--no-key-validation)"
+        log_warn "Private key validation disabled: key material for $domain is bundled without verification"
     fi
 
     # Two layouts can resolve to one output (for example certbot and legacy

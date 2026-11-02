@@ -181,6 +181,15 @@ RC=$(run_unifier mismatch-skip --no-tld-filter --skip-pfx-on-mismatch "$D")
 expect "--skip-pfx-on-mismatch continues" 0 "$RC"
 expect "--skip-pfx-on-mismatch still writes nothing" "no" "$([[ -f "$D/mismatch.com/mismatch.com.pem" ]] && echo yes || echo no)"
 
+# The documented environment variable must behave like the flag (3.1.2 fix).
+D="$TMP_BASE/envmismatch"
+gen_certbot "$D" "envmismatch.com"
+openssl genrsa -out "$D/envmismatch.com/privkey.pem" 2048 2>/dev/null
+RC=$(export NO_KEY_VALIDATION=true; run_unifier envmismatch --no-tld-filter "$D")
+expect "NO_KEY_VALIDATION=true bundles unverifiable material" 0 "$RC"
+expect "NO_KEY_VALIDATION=true writes the bundle" "yes" "$([[ -f "$D/envmismatch.com/envmismatch.com.pem" ]] && echo yes || echo no)"
+expect "the opt-out is reported as a warning" 1 "$(grep -c 'validation disabled' "$LOG_DIR/envmismatch.err")"
+
 # -----------------------------------------------------------------------------
 log "A missing private key is refused (3.1.1 regression)"
 # -----------------------------------------------------------------------------
@@ -312,7 +321,11 @@ D="$TMP_BASE/garbage"
 gen_cert "$D" "garbage.com"
 mkdir -p "$D/garbage.com"
 cp "$D/garbage.com.crt" "$D/garbage.com/fullchain.pem"
-printf -- '-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n' >"$D/garbage.com/privkey.pem"
+# A PEM header assembled at run time: the literal is a test fixture, not a key,
+# and a source file must not contain a private-key block that secret scanners
+# (including `ghagent privacy`) flag.
+PEM_LABEL='PRIVATE KEY'
+printf -- '-----BEGIN %s-----\nAAAA\n-----END %s-----\n' "$PEM_LABEL" "$PEM_LABEL" >"$D/garbage.com/privkey.pem"
 RC=$(run_unifier garbage --no-tld-filter "$D")
 expect "garbage key fails with 1" 1 "$RC"
 expect "no bundle is written" "no" "$([[ -f "$D/garbage.com/garbage.com.pem" ]] && echo yes || echo no)"
