@@ -1,13 +1,21 @@
 # Cert Unifier
 
-**Versión 3.1.1** — unificación auditada de PEM y PFX para Let's Encrypt, Certbot y estructuras heredadas.
-
-[English](README.md) · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
+Cert Unifier 3.1.1 es un empaquetador auditado de PEM y PFX para operadores de
+Let's Encrypt, Certbot y estructuras de certificados heredadas: escribe un paquete por
+dominio solo tras comprobar que la clave privada corresponde al certificado final, y
+rechaza las entradas que no puede verificar.
 
 [![CI](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml/badge.svg)](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml)
+[![Release v3.1.1](https://img.shields.io/badge/release-v3.1.1-blue)](https://github.com/paulmann/cert-unifier/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Bash 4.0+](https://img.shields.io/badge/bash-4.0%2B-4EAA25)](https://www.gnu.org/software/bash/)
 [![OpenSSL 1.1.1+ / 3.x](https://img.shields.io/badge/openssl-1.1.1%2B%20%7C%203.x-721412)](https://www.openssl.org/)
+
+<p align="center"><img src="https://github.com/paulmann/cert-unifier/raw/main/assets/social-preview.png" alt="Cert Unifier banner" width="100%"></p>
+
+[English](README.md) · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
+
+[Wiki](https://github.com/paulmann/cert-unifier/wiki) · [Versiones](https://github.com/paulmann/cert-unifier/releases) · [Seguridad](SECURITY.md) · [Contribuir](CONTRIBUTING.md) · [Para agentes](AGENTS.md)
 
 ## Contenido
 
@@ -21,6 +29,7 @@
 - [Resumen JSON](#resumen-json)
 - [Códigos de salida](#códigos-de-salida)
 - [Seguridad](#seguridad)
+- [Documentación](#documentación)
 - [Pruebas](#pruebas)
 - [Contribuir](#contribuir)
 - [Licencia](#licencia)
@@ -93,8 +102,9 @@ sudo install -m 755 cert-unifier.sh /usr/local/bin/cert-unifier
 # 1. inspect the tree without writing anything
 ./cert-unifier.sh --dry-run --verbose /etc/letsencrypt/live
 
-# 2. run it on one domain directory, then on the whole tree
-./cert-unifier.sh /etc/letsencrypt/live/example.com
+# 2. run it on the tree root, not on a single domain directory: for Certbot
+#    the root is the directory that holds the per-domain folders, and a single
+#    domain directory matches nothing (exit 2)
 ./cert-unifier.sh /etc/letsencrypt/live
 
 # 3. PEM plus PKCS#12 (the password is read from the environment)
@@ -199,6 +209,18 @@ errores siguen yendo a stderr para que stdout siga siendo analizable.
   corta; una contraseña vacía produce un PFX sin cifrar.
 - El script nunca elimina archivos de origen, nunca accede a la red y nunca
   recarga un servicio.
+
+## Documentación
+
+| Documento | Contenido |
+|-----------|-----------|
+| [README.md](README.md) | Resumen, uso y opciones de este archivo |
+| [Wiki](https://github.com/paulmann/cert-unifier/wiki) | Guías detalladas y notas de operación |
+| [AGENTS.md](AGENTS.md) | Instrucciones no interactivas para agentes de IA |
+| [CHANGELOG.md](CHANGELOG.md) | Historial de versiones con versiones semánticas |
+| [SECURITY.md](SECURITY.md) | Cómo informar de una vulnerabilidad |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Cómo proponer y probar un cambio |
+| [Releases](https://github.com/paulmann/cert-unifier/releases) | Versiones publicadas y sus artefactos |
 
 ## Pruebas
 

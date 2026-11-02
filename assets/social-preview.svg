@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="Cert Unifier — Verifies that a private key matches its certificate before it writes the bundle.">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#1b3354"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" fill="url(#background)"/>
+  <rect x="0" y="0" width="1280" height="5" rx="0" fill="#4f9cf9" stroke="#4f9cf9" stroke-width="1"/>
+  <text x="48" y="84" font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="17" fill="#4f9cf9" text-anchor="start">TLS CERTIFICATE BUNDLER</text>
+  <text x="48" y="172" font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="76" font-weight="700" fill="#e6edf3" text-anchor="start"><tspan x="48"><tspan fill="#4f9cf9">C</tspan>ert</tspan><tspan x="243">Unifier</tspan></text>
+  <text x="48" y="242" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="30" font-weight="700" fill="#e6edf3" text-anchor="start">Verifies that a private key matches its certificate before it writes the bundle.</text>
+  <text x="48" y="304" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="20" fill="#96a4b2" text-anchor="start">Atomic 0600 PEM and PFX for Certbot, legacy and shared-hosting layouts.</text>
+  <rect x="48" y="330" width="114" height="36" rx="18" fill="#141d29" stroke="#2a3848" stroke-width="1"/>
+  <text x="66" y="354" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="18" fill="#96a4b2" text-anchor="start">Bash 4.0+</text>
+  <rect x="174" y="330" width="163" height="36" rx="18" fill="#141d29" stroke="#2a3848" stroke-width="1"/>
+  <text x="192" y="354" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="18" fill="#96a4b2" text-anchor="start">OpenSSL 1.1.1+</text>
+  <rect x="349" y="330" width="98" height="36" rx="18" fill="#141d29" stroke="#2a3848" stroke-width="1"/>
+  <text x="367" y="354" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="18" fill="#96a4b2" text-anchor="start">59 tests</text>
+  <rect x="459" y="330" width="144" height="36" rx="18" fill="#141d29" stroke="#2a3848" stroke-width="1"/>
+  <text x="477" y="354" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="18" fill="#96a4b2" text-anchor="start">11 wiki pages</text>
+  <rect x="615" y="330" width="108" height="36" rx="18" fill="#141d29" stroke="#2a3848" stroke-width="1"/>
+  <text x="633" y="354" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="18" fill="#96a4b2" text-anchor="start">2 layouts</text>
+  <rect x="735" y="330" width="66" height="36" rx="18" fill="#141d29" stroke="#2a3848" stroke-width="1"/>
+  <text x="753" y="354" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="18" fill="#96a4b2" text-anchor="start">MIT</text>
+  <rect x="48" y="378" width="1184" height="192" rx="16" fill="#0a1018" stroke="#22303f" stroke-width="1"/>
+  <circle cx="68" cy="400" r="6" fill="#ff5f56"/>
+  <circle cx="90" cy="400" r="6" fill="#ffbd2e"/>
+  <circle cx="112" cy="400" r="6" fill="#27c93f"/>
+  <line x1="48" y1="422" x2="1232" y2="422" stroke="#22303f" stroke-width="1"/>
+  <text x="144" y="405" font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="15" fill="#96a4b2" text-anchor="start">Cert Unifier · paulmann.github.io/cert-unifier</text>
+  <text x="76" y="448" font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="17" fill="#e6edf3" text-anchor="start"><tspan fill="#4f9cf9">$ </tspan>./cert-unifier.sh --dry-run /etc/letsencrypt/live</text>
+  <text x="76" y="475" font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="17" fill="#96a4b2" text-anchor="start">[INFO] Version: 3.1.1</text>
+  <text x="76" y="502" font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="17" fill="#96a4b2" text-anchor="start">[INFO] [DRY-RUN] Would write /etc/letsencrypt/live/example.com/example.com.pem (2870 bytes)</text>
+  <text x="76" y="529" font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="17" fill="#96a4b2" text-anchor="start">[INFO] Success (dry-run): 1 would be written, 0 unchanged</text>
+  <text x="48" y="606" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="19" font-weight="700" fill="#e6edf3" text-anchor="start">github.com/paulmann/cert-unifier</text>
+  <text x="1232" y="606" font-family="'Segoe UI', 'DejaVu Sans', sans-serif" font-size="19" font-weight="700" fill="#e6edf3" text-anchor="end">paulmann.github.io/cert-unifier</text>
+  <circle cx="929.015625" cy="599" r="5" fill="#3fb950"/>
+</svg>

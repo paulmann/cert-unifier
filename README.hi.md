@@ -1,13 +1,21 @@
 # Cert Unifier
 
-**संस्करण 3.1.1** — Let's Encrypt, Certbot और लेगेसी लेआउट के लिए सत्यापित PEM और PFX एकीकरण।
-
-[English](README.md) · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
+Cert Unifier 3.1.1 Let's Encrypt, Certbot और लेगेसी प्रमाणपत्र लेआउट के संचालकों के
+लिए एक सत्यापित PEM और PFX बंडलर है: यह प्रत्येक डोमेन के लिए बंडल तभी लिखता है जब
+निजी कुंजी लीफ़ प्रमाणपत्र से मेल खाती है, और जिन प्रविष्टियों को सत्यापित नहीं कर
+सकता उन्हें अस्वीकार करता है।
 
 [![CI](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml/badge.svg)](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml)
+[![Release v3.1.1](https://img.shields.io/badge/release-v3.1.1-blue)](https://github.com/paulmann/cert-unifier/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Bash 4.0+](https://img.shields.io/badge/bash-4.0%2B-4EAA25)](https://www.gnu.org/software/bash/)
 [![OpenSSL 1.1.1+ / 3.x](https://img.shields.io/badge/openssl-1.1.1%2B%20%7C%203.x-721412)](https://www.openssl.org/)
+
+<p align="center"><img src="https://github.com/paulmann/cert-unifier/raw/main/assets/social-preview.png" alt="Cert Unifier banner" width="100%"></p>
+
+[English](README.md) · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
+
+[विकी](https://github.com/paulmann/cert-unifier/wiki) · [रिलीज़](https://github.com/paulmann/cert-unifier/releases) · [सुरक्षा](SECURITY.md) · [योगदान](CONTRIBUTING.md) · [एजेंट के लिए](AGENTS.md)
 
 ## विषय-सूची
 
@@ -21,6 +29,7 @@
 - [JSON सारांश](#json-सारांश)
 - [एग्ज़िट कोड](#एग्ज़िट-कोड)
 - [सुरक्षा](#सुरक्षा)
+- [दस्तावेज़ीकरण](#दस्तावेज़ीकरण)
 - [परीक्षण](#परीक्षण)
 - [योगदान](#योगदान)
 - [लाइसेंस](#लाइसेंस)
@@ -90,8 +99,9 @@ sudo install -m 755 cert-unifier.sh /usr/local/bin/cert-unifier
 # 1. inspect the tree without writing anything
 ./cert-unifier.sh --dry-run --verbose /etc/letsencrypt/live
 
-# 2. run it on one domain directory, then on the whole tree
-./cert-unifier.sh /etc/letsencrypt/live/example.com
+# 2. run it on the tree root, not on a single domain directory: for Certbot
+#    the root is the directory that holds the per-domain folders, and a single
+#    domain directory matches nothing (exit 2)
 ./cert-unifier.sh /etc/letsencrypt/live
 
 # 3. PEM plus PKCS#12 (the password is read from the environment)
@@ -196,6 +206,18 @@ example.com_le10.key      private key (or example.com.key)
   बिना एन्क्रिप्शन वाला PFX बनाता है।
 - स्क्रिप्ट कभी स्रोत फ़ाइलें नहीं हटाती, कभी नेटवर्क को नहीं छूती और कभी
   सेवा को पुनः लोड नहीं करती।
+
+## दस्तावेज़ीकरण
+
+| दस्तावेज़ | विषय |
+|-----------|------|
+| [README.md](README.md) | इस फ़ाइल का परिचय, उपयोग और विकल्प |
+| [विकी](https://github.com/paulmann/cert-unifier/wiki) | विस्तृत मार्गदर्शिकाएँ और संचालन टिप्पणियाँ |
+| [AGENTS.md](AGENTS.md) | AI एजेंट के लिए गैर-इंटरैक्टिव निर्देश |
+| [CHANGELOG.md](CHANGELOG.md) | सेमांटिक संस्करणों के साथ संस्करण इतिहास |
+| [SECURITY.md](SECURITY.md) | सुरक्षा भेद्यता की रिपोर्ट कैसे करें |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | बदलाव प्रस्तावित और परीक्षण कैसे करें |
+| [रिलीज़](https://github.com/paulmann/cert-unifier/releases) | प्रकाशित संस्करण और उनकी फ़ाइलें |
 
 ## परीक्षण
 

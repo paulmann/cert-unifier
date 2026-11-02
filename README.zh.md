@@ -1,13 +1,20 @@
 # Cert Unifier
 
-**版本 3.1.1** — 面向 Let's Encrypt、Certbot 与旧式布局的、经过校验的 PEM 与 PFX 统一工具。
-
-[English](README.md) · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
+Cert Unifier 3.1.1 是一款经过校验的 PEM 与 PFX 打包工具，面向 Let's Encrypt、Certbot
+与旧式证书布局的运维人员：只有在确认私钥与叶子证书匹配之后，它才会为每个域名写出
+一份打包文件，并拒绝任何无法校验的条目。
 
 [![CI](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml/badge.svg)](https://github.com/paulmann/cert-unifier/actions/workflows/ci.yml)
+[![Release v3.1.1](https://img.shields.io/badge/release-v3.1.1-blue)](https://github.com/paulmann/cert-unifier/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Bash 4.0+](https://img.shields.io/badge/bash-4.0%2B-4EAA25)](https://www.gnu.org/software/bash/)
 [![OpenSSL 1.1.1+ / 3.x](https://img.shields.io/badge/openssl-1.1.1%2B%20%7C%203.x-721412)](https://www.openssl.org/)
+
+<p align="center"><img src="https://github.com/paulmann/cert-unifier/raw/main/assets/social-preview.png" alt="Cert Unifier banner" width="100%"></p>
+
+[English](README.md) · [Deutsch](README.de.md) · [中文](README.zh.md) · [हिन्दी](README.hi.md) · [Español](README.es.md) · [Русский](README.ru.md)
+
+[维基](https://github.com/paulmann/cert-unifier/wiki) · [发布版本](https://github.com/paulmann/cert-unifier/releases) · [安全性](SECURITY.md) · [参与贡献](CONTRIBUTING.md) · [面向智能体](AGENTS.md)
 
 ## 目录
 
@@ -21,6 +28,7 @@
 - [JSON 摘要](#json-摘要)
 - [退出码](#退出码)
 - [安全性](#安全性)
+- [文档](#文档)
 - [测试](#测试)
 - [参与贡献](#参与贡献)
 - [许可证](#许可证)
@@ -85,8 +93,9 @@ sudo install -m 755 cert-unifier.sh /usr/local/bin/cert-unifier
 # 1. inspect the tree without writing anything
 ./cert-unifier.sh --dry-run --verbose /etc/letsencrypt/live
 
-# 2. run it on one domain directory, then on the whole tree
-./cert-unifier.sh /etc/letsencrypt/live/example.com
+# 2. run it on the tree root, not on a single domain directory: for Certbot
+#    the root is the directory that holds the per-domain folders, and a single
+#    domain directory matches nothing (exit 2)
 ./cert-unifier.sh /etc/letsencrypt/live
 
 # 3. PEM plus PKCS#12 (the password is read from the environment)
@@ -186,6 +195,18 @@ example.com_le10.key      private key (or example.com.key)
 - PFX 口令通过命令行传给 OpenSSL，因此在这次调用期间能在 `ps` 中看到。
   请优先使用短生命周期的环境变量；空口令会生成未加密的 PFX。
 - 脚本从不删除源文件，从不访问网络，也从不重载服务。
+
+## 文档
+
+| 文档 | 内容 |
+|------|------|
+| [README.md](README.md) | 本文件的概览、用法与选项 |
+| [维基](https://github.com/paulmann/cert-unifier/wiki) | 详细指南与运维说明 |
+| [AGENTS.md](AGENTS.md) | 面向 AI 智能体的非交互式说明 |
+| [CHANGELOG.md](CHANGELOG.md) | 带语义化版本的版本历史 |
+| [SECURITY.md](SECURITY.md) | 如何报告安全漏洞 |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 如何提出并测试改动 |
+| [发布版本](https://github.com/paulmann/cert-unifier/releases) | 已发布的版本及其产物 |
 
 ## 测试
 
